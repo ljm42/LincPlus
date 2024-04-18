@@ -1,0 +1,99 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "LincPlus">
+<!ENTITY author    "ljm42">
+<!ENTITY version   "2024.04.18">
+<!ENTITY md5       "f600ae34b54fe2b8743cfcde5162299e">
+<!ENTITY plugdir   "/usr/local/emhttp/plugins/&name;">
+<!ENTITY github    "ljm42/LincPlus">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/master/plugins/&name;.plg">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="6.12.0">
+
+<CHANGES>
+###2024.04.18
+- Initial Release
+</CHANGES>
+
+<!--
+Cleanup before install/upgrade/remove
+-->
+<FILE Run="/bin/bash" Method="install remove">
+<INLINE>
+<![CDATA[
+clean_go_script () {
+  GOTEST=$1
+  if grep -q "$GOTEST" /boot/config/go; then
+    [[ ! -f /boot/config/go.lp ]] && cp /boot/config/go /boot/config/go.lp
+    sed -i "/$GOTEST/d" /boot/config/go
+  fi
+}
+
+# kill services
+pkill -f /usr/local/sbin/led/go_8130_led_linux
+pkill -f /usr/local/sbin/reset/reset
+pkill -f /usr/local/sbin/logo/show
+
+# remove legacy entries from go script
+clean_go_script '# Start the LED Service'
+clean_go_script '\/usr\/local\/sbin\/led\/'
+clean_go_script '# Start the RESET Service'
+clean_go_script '\/usr\/local\/sbin\/reset\/'
+clean_go_script '# Start the HDMI Service'
+clean_go_script '\/usr\/local\/sbin\/logo\/'
+
+# Remove legacy files from the flash drive
+rm -rf /boot/config/led/
+rm -rf /boot/config/reset/
+rm -rf /boot/config/show/
+]]>
+# Remove old source files from flash drive
+rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null &#124; grep -v '&version;')
+exit 0
+</INLINE>
+</FILE>
+
+<!--
+Install the source file
+-->
+<FILE Name="/boot/config/plugins/&name;/&name;-&version;-x86_64-1.txz" Run="upgradepkg --install-new --reinstall">
+<URL>https://raw.githubusercontent.com/&github;/master/archive/&name;-&version;-x86_64-1.txz</URL>
+<MD5>&md5;</MD5>
+</FILE>
+
+<!--
+The post-install script
+-->
+<FILE Run="/bin/bash">
+<INLINE Method="install">
+<![CDATA[
+# Start the LED Service
+nohup /usr/local/sbin/led/go_8130_led_linux >/dev/null 2>&1 &
+# Start the RESET Service
+nohup /usr/local/sbin/reset/reset >/dev/null 2>&1 &
+# Start the HDMI Service
+nohup /usr/local/sbin/logo/show >/dev/null 2>&1 &
+]]>
+echo ""
+echo "----------------------------------------------------"
+echo " &name; has been installed."
+echo " Version: &version;"
+echo "----------------------------------------------------"
+echo ""
+exit 0
+</INLINE>
+</FILE>
+
+<!--
+The remove script
+-->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -rf /usr/local/sbin/led/storage
+removepkg &name;-&version;-x86_64-1
+rm -rf &plugdir;
+exit 0
+</INLINE>
+</FILE> 
+</PLUGIN>
